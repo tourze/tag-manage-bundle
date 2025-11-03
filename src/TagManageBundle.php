@@ -12,6 +12,7 @@ use Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle;
 use Tourze\DoctrineTrackBundle\DoctrineTrackBundle;
 use Tourze\DoctrineUserBundle\DoctrineUserBundle;
 use Tourze\JsonRPCPaginatorBundle\JsonRPCPaginatorBundle;
+use Tourze\EasyAdminMenuBundle\EasyAdminMenuBundle;
 
 class TagManageBundle extends Bundle implements BundleDependencyInterface
 {
@@ -26,6 +27,7 @@ class TagManageBundle extends Bundle implements BundleDependencyInterface
             DoctrineTrackBundle::class => ['all' => true],
             DoctrineTimestampBundle::class => ['all' => true],
             DoctrineUserBundle::class => ['all' => true],
+            EasyAdminMenuBundle::class => ['all' => true],
         ];
     }
 }
