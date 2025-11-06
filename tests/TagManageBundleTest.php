@@ -12,6 +12,7 @@ use Tourze\DoctrineIpBundle\DoctrineIpBundle;
 use Tourze\DoctrineTimestampBundle\DoctrineTimestampBundle;
 use Tourze\DoctrineTrackBundle\DoctrineTrackBundle;
 use Tourze\DoctrineUserBundle\DoctrineUserBundle;
+use Tourze\EasyAdminMenuBundle\EasyAdminMenuBundle;
 use Tourze\JsonRPCPaginatorBundle\JsonRPCPaginatorBundle;
 use Tourze\PHPUnitSymfonyKernelTest\AbstractBundleTestCase;
 use Tourze\TagManageBundle\TagManageBundle;
@@ -36,6 +37,7 @@ final class TagManageBundleTest extends AbstractBundleTestCase
             DoctrineTrackBundle::class => ['all' => true],
             DoctrineTimestampBundle::class => ['all' => true],
             DoctrineUserBundle::class => ['all' => true],
+            EasyAdminMenuBundle::class => ['all' => true],
         ];
 
         $this->assertSame($expectedDependencies, $dependencies);
