@@ -7,9 +7,11 @@ namespace Tourze\TagManageBundle\Tests\Procedure;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Tourze\JsonRPC\Core\Exception\ApiException;
-use Tourze\JsonRPC\Core\Tests\AbstractProcedureTestCase;
+use Tourze\JsonRPC\Core\Result\ArrayResult;
+use Tourze\PHPUnitJsonRPC\AbstractProcedureTestCase;
 use Tourze\TagManageBundle\Entity\Tag;
 use Tourze\TagManageBundle\Entity\TagGroup;
+use Tourze\TagManageBundle\Param\SearchTagsParam;
 use Tourze\TagManageBundle\Procedure\SearchTags;
 
 /**
@@ -35,15 +37,18 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $tag3 = $this->createTag('高科技-搜索', $tagGroup);
         $tag4 = $this->createTag('传统工艺-搜索', $tagGroup); // 不匹配的标签
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->limit = 10;
-        $this->procedure->validOnly = true;
-        $this->procedure->groupId = null;
-        $this->procedure->orderByUsage = false;
+        $param = new SearchTagsParam(
+            keyword: '科技',
+            limit: 10,
+            validOnly: true,
+            groupId: null,
+            orderByUsage: false,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('keyword', $result);
         $this->assertArrayHasKey('total', $result);
         $this->assertArrayHasKey('tags', $result);
@@ -77,14 +82,17 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $partialTag = $this->createTag('科技产品-精确搜索', $tagGroup);
         $anotherPartialTag = $this->createTag('高科技创新-精确搜索', $tagGroup);
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->limit = 10;
-        $this->procedure->validOnly = true;
-        $this->procedure->orderByUsage = false;
+        $param = new SearchTagsParam(
+            keyword: '科技',
+            limit: 10,
+            validOnly: true,
+            orderByUsage: false,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertGreaterThanOrEqual(3, $result['total']);
 
         // 精确匹配应该排在前面（根据匹配度排序）
@@ -106,13 +114,16 @@ final class SearchTagsTest extends AbstractProcedureTestCase
             $this->createTag("科技标签{$i}", $tagGroup);
         }
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->limit = 5;
-        $this->procedure->validOnly = true;
+        $param = new SearchTagsParam(
+            keyword: '科技',
+            limit: 5,
+            validOnly: true,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('tags', $result);
         $this->assertLessThanOrEqual(5, count($result['tags']));
         $this->assertEquals(count($result['tags']), $result['total']);
@@ -127,13 +138,16 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $invalidTag->setValid(false);
         $this->persistAndFlush($invalidTag);
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->validOnly = false;
-        $this->procedure->limit = 10;
+        $param = new SearchTagsParam(
+            keyword: '科技',
+            limit: 10,
+            validOnly: false,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertGreaterThanOrEqual(2, $result['total']);
 
         // 应该包含有效和无效的标签
@@ -151,14 +165,17 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $tag1 = $this->createTag('科技产品-分组搜索', $group1);
         $tag2 = $this->createTag('科技服务-分组搜索', $group2);
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->groupId = $group1->getId();
-        $this->procedure->validOnly = true;
-        $this->procedure->limit = 10;
+        $param = new SearchTagsParam(
+            keyword: '科技',
+            limit: 10,
+            validOnly: true,
+            groupId: $group1->getId(),
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertGreaterThanOrEqual(1, $result['total']);
 
         // 所有结果应该都是指定标签组的
@@ -177,14 +194,17 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $tag2 = $this->createTag('科技-限制数量2', $tagGroup);
         $tag3 = $this->createTag('科技-限制数量3', $tagGroup);
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->orderByUsage = true;
-        $this->procedure->limit = 10;
-        $this->procedure->validOnly = true;
+        $param = new SearchTagsParam(
+            keyword: '科技',
+            limit: 10,
+            validOnly: true,
+            orderByUsage: true,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('tags', $result);
         $this->assertGreaterThanOrEqual(3, count($result['tags']));
 
@@ -197,12 +217,11 @@ final class SearchTagsTest extends AbstractProcedureTestCase
 
     public function testExecuteWithEmptyKeyword(): void
     {
-        $this->procedure->keyword = '';
-
         $this->expectException(ApiException::class);
         $this->expectExceptionMessage('搜索关键词不能为空');
 
-        $this->procedure->execute();
+        $param = new SearchTagsParam(keyword: '');
+        $this->procedure->execute($param);
     }
 
     public function testExecuteWithShortKeyword(): void
@@ -211,13 +230,16 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $tagGroup = $this->createTagGroup('短关键词', '测试短关键词搜索');
         $tag = $this->createTag('A标签-排序测试', $tagGroup);
 
-        $this->procedure->keyword = 'A';
-        $this->procedure->limit = 10;
-        $this->procedure->validOnly = true;
+        $param = new SearchTagsParam(
+            keyword: 'A',
+            limit: 10,
+            validOnly: true,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertEquals('A', $result['keyword']);
         $this->assertGreaterThanOrEqual(1, $result['total']);
         $this->assertStringContainsString('<mark>A</mark>', $result['tags'][0]['highlighted']);
@@ -229,13 +251,16 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $tagGroup = $this->createTagGroup('不匹配', '不匹配的标签');
         $this->createTag('完全不相关-空结果', $tagGroup);
 
-        $this->procedure->keyword = '没有匹配';
-        $this->procedure->limit = 10;
-        $this->procedure->validOnly = true;
+        $param = new SearchTagsParam(
+            keyword: '没有匹配',
+            limit: 10,
+            validOnly: true,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertEquals('没有匹配', $result['keyword']);
         $this->assertEquals(0, $result['total']);
         $this->assertEmpty($result['tags']);
@@ -248,13 +273,16 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $tag1 = $this->createTag('科技产品-大小写', $tagGroup);
         $tag2 = $this->createTag('TECH科技-大小写', $tagGroup);
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->limit = 10;
-        $this->procedure->validOnly = true;
+        $param = new SearchTagsParam(
+            keyword: '科技',
+            limit: 10,
+            validOnly: true,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertGreaterThanOrEqual(2, $result['total']);
 
         $names = array_column($result['tags'], 'name');
@@ -270,12 +298,15 @@ final class SearchTagsTest extends AbstractProcedureTestCase
         $tag2 = $this->createTag('高科技产品-高亮测试', $tagGroup);
         $tag3 = $this->createTag('科技创新科技-高亮测试', $tagGroup); // 包含多个关键词
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->limit = 10;
+        $param = new SearchTagsParam(
+            keyword: '科技',
+            limit: 10,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertGreaterThanOrEqual(3, count($result['tags']));
 
         // 验证不同情况下的高亮
@@ -302,28 +333,6 @@ final class SearchTagsTest extends AbstractProcedureTestCase
             }
         }
         $this->assertTrue($hasPartialHighlight, '应该有部分匹配的高亮');
-    }
-
-    public function testGetMockResult(): void
-    {
-        $mockResult = SearchTags::getMockResult();
-
-        $this->assertIsArray($mockResult);
-        $this->assertArrayHasKey('keyword', $mockResult);
-        $this->assertArrayHasKey('total', $mockResult);
-        $this->assertArrayHasKey('tags', $mockResult);
-        $this->assertIsArray($mockResult['tags']);
-
-        // 检查标签项结构
-        if (($mockResult['tags'] ?? []) !== []) {
-            $tag = $mockResult['tags'][0];
-            $this->assertArrayHasKey('id', $tag);
-            $this->assertArrayHasKey('name', $tag);
-            $this->assertArrayHasKey('valid', $tag);
-            $this->assertArrayHasKey('group', $tag);
-            $this->assertArrayHasKey('highlighted', $tag);
-            $this->assertStringContainsString('<mark>', $tag['highlighted'], 'mock结果应该包含高亮标记');
-        }
     }
 
     /**

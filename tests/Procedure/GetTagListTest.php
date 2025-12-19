@@ -9,9 +9,11 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Tourze\JsonRPC\Core\Exception\ApiException;
 use Tourze\JsonRPC\Core\Model\JsonRpcParams;
 use Tourze\JsonRPC\Core\Model\JsonRpcRequest;
-use Tourze\JsonRPC\Core\Tests\AbstractProcedureTestCase;
+use Tourze\JsonRPC\Core\Result\ArrayResult;
+use Tourze\PHPUnitJsonRPC\AbstractProcedureTestCase;
 use Tourze\TagManageBundle\Entity\Tag;
 use Tourze\TagManageBundle\Entity\TagGroup;
+use Tourze\TagManageBundle\Param\GetTagListParam;
 use Tourze\TagManageBundle\Procedure\GetTagList;
 
 /**
@@ -35,18 +37,21 @@ final class GetTagListTest extends AbstractProcedureTestCase
         $tag1 = $this->createTag('热门', $tagGroup);
         $tag2 = $this->createTag('科技', $tagGroup);
 
-        $this->procedure->groupId = null;
-        $this->procedure->keyword = null;
-        $this->procedure->validOnly = true;
-        $this->procedure->orderBy = 'createTime';
-        $this->procedure->orderDir = 'DESC';
-        $this->procedure->includeUsageStats = false;
-        $this->procedure->currentPage = 1;
-        $this->procedure->pageSize = 10;
+        $param = new GetTagListParam(
+            groupId: null,
+            keyword: null,
+            validOnly: true,
+            orderBy: 'createTime',
+            orderDir: 'DESC',
+            includeUsageStats: false,
+            pageSize: 10,
+            currentPage: 1,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('list', $result);
         $this->assertArrayHasKey('pagination', $result);
         $this->assertIsArray($result['list']);
@@ -73,14 +78,17 @@ final class GetTagListTest extends AbstractProcedureTestCase
         $tag1 = $this->createTag('数码', $group1);
         $tag2 = $this->createTag('热门', $group2);
 
-        $this->procedure->groupId = $group1->getId();
-        $this->procedure->validOnly = true;
-        $this->procedure->currentPage = 1;
-        $this->procedure->pageSize = 10;
+        $param = new GetTagListParam(
+            groupId: $group1->getId(),
+            validOnly: true,
+            currentPage: 1,
+            pageSize: 10,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('list', $result);
         $this->assertGreaterThanOrEqual(1, count($result['list']));
 
@@ -100,14 +108,17 @@ final class GetTagListTest extends AbstractProcedureTestCase
         $tag2 = $this->createTag('科技创新', $tagGroup);
         $tag3 = $this->createTag('传统工艺', $tagGroup);
 
-        $this->procedure->keyword = '科技';
-        $this->procedure->validOnly = true;
-        $this->procedure->currentPage = 1;
-        $this->procedure->pageSize = 10;
+        $param = new GetTagListParam(
+            keyword: '科技',
+            validOnly: true,
+            currentPage: 1,
+            pageSize: 10,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('list', $result);
         $this->assertGreaterThanOrEqual(2, count($result['list']));
 
@@ -126,13 +137,16 @@ final class GetTagListTest extends AbstractProcedureTestCase
         $invalidTag->setValid(false);
         $this->persistAndFlush($invalidTag);
 
-        $this->procedure->validOnly = false;
-        $this->procedure->currentPage = 1;
-        $this->procedure->pageSize = 10;
+        $param = new GetTagListParam(
+            validOnly: false,
+            currentPage: 1,
+            pageSize: 10,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('list', $result);
         $this->assertGreaterThanOrEqual(2, count($result['list']));
 
@@ -148,13 +162,16 @@ final class GetTagListTest extends AbstractProcedureTestCase
         $tagGroup = $this->createTagGroup('统计标签', '用于统计的标签');
         $tag = $this->createTag('测试标签', $tagGroup);
 
-        $this->procedure->includeUsageStats = true;
-        $this->procedure->currentPage = 1;
-        $this->procedure->pageSize = 10;
+        $param = new GetTagListParam(
+            includeUsageStats: true,
+            currentPage: 1,
+            pageSize: 10,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('list', $result);
         $this->assertGreaterThanOrEqual(1, count($result['list']));
 
@@ -175,14 +192,17 @@ final class GetTagListTest extends AbstractProcedureTestCase
         $tag3 = $this->createTag('C标签', $tagGroup);
 
         // 测试按名称升序排列
-        $this->procedure->orderBy = 'createTime';
-        $this->procedure->orderDir = 'ASC';
-        $this->procedure->currentPage = 1;
-        $this->procedure->pageSize = 10;
+        $param = new GetTagListParam(
+            orderBy: 'createTime',
+            orderDir: 'ASC',
+            currentPage: 1,
+            pageSize: 10,
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('list', $result);
         $this->assertGreaterThanOrEqual(3, count($result['list']));
 
@@ -195,12 +215,14 @@ final class GetTagListTest extends AbstractProcedureTestCase
 
     public function testExecuteWithInvalidGroupId(): void
     {
-        $this->procedure->groupId = 'invalid-group-id';
+        $param = new GetTagListParam(
+            groupId: 'invalid-group-id',
+        );
 
         $this->expectException(ApiException::class);
         $this->expectExceptionMessage('标签组不存在');
 
-        $this->procedure->execute();
+        $this->procedure->execute($param);
     }
 
     public function testExecuteWithPagination(): void
@@ -212,14 +234,17 @@ final class GetTagListTest extends AbstractProcedureTestCase
         }
 
         // 测试第一页
-        $this->procedure->currentPage = 1;
-        $this->procedure->pageSize = 2;
-        $this->procedure->orderBy = 'createTime';
-        $this->procedure->orderDir = 'ASC';
+        $param = new GetTagListParam(
+            currentPage: 1,
+            pageSize: 2,
+            orderBy: 'createTime',
+            orderDir: 'ASC',
+        );
 
-        $result = $this->procedure->execute();
+        $result = $this->procedure->execute($param);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $result = $result->toArray();
 
-        $this->assertIsArray($result);
         $this->assertArrayHasKey('list', $result);
         $this->assertArrayHasKey('pagination', $result);
         $this->assertLessThanOrEqual(2, count($result['list']));
@@ -254,7 +279,8 @@ final class GetTagListTest extends AbstractProcedureTestCase
 
     public function testGetCacheDuration(): void
     {
-        $request = $this->createMock(JsonRpcRequest::class);
+        $request = new JsonRpcRequest();
+        $request->setMethod('tag.list');
 
         $duration = $this->procedure->getCacheDuration($request);
 
@@ -263,51 +289,24 @@ final class GetTagListTest extends AbstractProcedureTestCase
 
     public function testGetCacheTags(): void
     {
-        $request = $this->createMock(JsonRpcRequest::class);
-
         // 不带 groupId
-        $this->procedure->groupId = null;
-        $tags = iterator_to_array($this->procedure->getCacheTags($request));
+        $request1 = new JsonRpcRequest();
+        $request1->setMethod('tag.list');
+        $request1->setParams(new JsonRpcParams([]));
+        $tags = iterator_to_array($this->procedure->getCacheTags($request1));
 
         $this->assertContains('tag', $tags);
         $this->assertContains('tag_list', $tags);
 
         // 带 groupId
-        $this->procedure->groupId = '123';
-        $tags = iterator_to_array($this->procedure->getCacheTags($request));
+        $request2 = new JsonRpcRequest();
+        $request2->setMethod('tag.list');
+        $request2->setParams(new JsonRpcParams(['groupId' => '123']));
+        $tags = iterator_to_array($this->procedure->getCacheTags($request2));
 
         $this->assertContains('tag', $tags);
         $this->assertContains('tag_list', $tags);
         $this->assertContains('tag_group_123', $tags);
-    }
-
-    public function testGetMockResult(): void
-    {
-        $mockResult = GetTagList::getMockResult();
-
-        $this->assertIsArray($mockResult);
-        $this->assertArrayHasKey('list', $mockResult);
-        $this->assertArrayHasKey('pagination', $mockResult);
-        $this->assertIsArray($mockResult['list']);
-        $this->assertIsArray($mockResult['pagination']);
-
-        // 检查列表项结构
-        if (($mockResult['list'] ?? []) !== []) {
-            $item = $mockResult['list'][0];
-            $this->assertArrayHasKey('id', $item);
-            $this->assertArrayHasKey('name', $item);
-            $this->assertArrayHasKey('valid', $item);
-            $this->assertArrayHasKey('group', $item);
-            $this->assertArrayHasKey('createTime', $item);
-            $this->assertArrayHasKey('updateTime', $item);
-        }
-
-        // 检查分页结构
-        $pagination = $mockResult['pagination'];
-        $this->assertArrayHasKey('current', $pagination);
-        $this->assertArrayHasKey('pageSize', $pagination);
-        $this->assertArrayHasKey('total', $pagination);
-        $this->assertArrayHasKey('hasMore', $pagination);
     }
 
     /**

@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace Tourze\TagManageBundle\Procedure;
 
-use Symfony\Component\Validator\Constraints as Assert;
 use Tourze\JsonRPC\Core\Attribute\MethodDoc;
 use Tourze\JsonRPC\Core\Attribute\MethodExpose;
-use Tourze\JsonRPC\Core\Attribute\MethodParam;
 use Tourze\JsonRPC\Core\Attribute\MethodTag;
+use Tourze\JsonRPC\Core\Contracts\RpcParamInterface;
+use Tourze\JsonRPC\Core\Result\ArrayResult;
 use Tourze\JsonRPC\Core\Exception\ApiException;
 use Tourze\JsonRPC\Core\Model\JsonRpcRequest;
 use Tourze\JsonRPCCacheBundle\Procedure\CacheableProcedure;
 use Tourze\TagManageBundle\Exception\TagManageException;
+use Tourze\TagManageBundle\Param\GetTagGroupDetailParam;
 use Tourze\TagManageBundle\Repository\TagGroupRepository;
 
 #[MethodTag(name: '标签管理')]
@@ -20,21 +21,17 @@ use Tourze\TagManageBundle\Repository\TagGroupRepository;
 #[MethodExpose(method: 'GetTagGroupDetail')]
 final class GetTagGroupDetail extends CacheableProcedure
 {
-    #[MethodParam(description: '标签组ID')]
-    #[Assert\NotBlank]
-    public string $groupId;
-
-    #[MethodParam(description: '是否包含关联的标签列表')]
-    public bool $includeTags = false;
-
     public function __construct(
         private readonly TagGroupRepository $tagGroupRepository,
     ) {
     }
 
-    public function execute(): array
+    /**
+     * @phpstan-param GetTagGroupDetailParam $param
+     */
+    public function execute(GetTagGroupDetailParam|RpcParamInterface $param): ArrayResult
     {
-        $tagGroup = $this->tagGroupRepository->find($this->groupId);
+        $tagGroup = $this->tagGroupRepository->find($param->groupId);
         if (null === $tagGroup) {
             throw new ApiException('标签组不存在');
         }
@@ -49,7 +46,7 @@ final class GetTagGroupDetail extends CacheableProcedure
             'tagCount' => $tagGroup->getTags()->count(),
         ];
 
-        if ($this->includeTags) {
+        if ($param->includeTags) {
             $tags = [];
             foreach ($tagGroup->getTags() as $tag) {
                 $tags[] = [
@@ -62,7 +59,7 @@ final class GetTagGroupDetail extends CacheableProcedure
             $result['tags'] = $tags;
         }
 
-        return $result;
+        return new ArrayResult($result);
     }
 
     public function getCacheKey(JsonRpcRequest $request): string
@@ -85,36 +82,13 @@ final class GetTagGroupDetail extends CacheableProcedure
      */
     public function getCacheTags(JsonRpcRequest $request): iterable
     {
-        return ['tag_group', 'tag_group_detail', 'tag_group_' . $this->groupId];
+        $params = $request->getParams();
+        $groupId = $params?->get('groupId') ?? '';
+
+        return ['tag_group', 'tag_group_detail', 'tag_group_' . $groupId];
     }
 
     /**
      * @return array<string, mixed>
      */
-    public static function getMockResult(): array
-    {
-        return [
-            'id' => '1',
-            'name' => '推荐标签',
-            'createTime' => '2024-01-01 12:00:00',
-            'updateTime' => '2024-01-01 12:00:00',
-            'createdBy' => 'admin',
-            'updatedBy' => 'admin',
-            'tagCount' => 3,
-            'tags' => [
-                [
-                    'id' => '101',
-                    'name' => '热门',
-                    'valid' => true,
-                    'createTime' => '2024-01-01 12:10:00',
-                ],
-                [
-                    'id' => '102',
-                    'name' => '推荐',
-                    'valid' => true,
-                    'createTime' => '2024-01-01 12:15:00',
-                ],
-            ],
-        ];
-    }
 }

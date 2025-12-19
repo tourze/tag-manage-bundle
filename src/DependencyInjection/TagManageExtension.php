@@ -4,7 +4,7 @@ namespace Tourze\TagManageBundle\DependencyInjection;
 
 use Tourze\SymfonyDependencyServiceLoader\AutoExtension;
 
-class TagManageExtension extends AutoExtension
+final class TagManageExtension extends AutoExtension
 {
     protected function getConfigDir(): string
     {

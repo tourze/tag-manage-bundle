@@ -9,9 +9,11 @@ use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use Tourze\JsonRPC\Core\Exception\ApiException;
 use Tourze\JsonRPC\Core\Model\JsonRpcParams;
 use Tourze\JsonRPC\Core\Model\JsonRpcRequest;
-use Tourze\JsonRPC\Core\Tests\AbstractProcedureTestCase;
+use Tourze\JsonRPC\Core\Result\ArrayResult;
+use Tourze\PHPUnitJsonRPC\AbstractProcedureTestCase;
 use Tourze\TagManageBundle\Entity\Tag;
 use Tourze\TagManageBundle\Entity\TagGroup;
+use Tourze\TagManageBundle\Param\GetTagGroupDetailParam;
 use Tourze\TagManageBundle\Procedure\GetTagGroupDetail;
 
 /**
@@ -37,21 +39,24 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
 
         $groupId = $tagGroup->getId();
         self::assertNotNull($groupId);
-        $this->procedure->groupId = $groupId;
-        $this->procedure->includeTags = false;
 
-        $result = $this->procedure->execute();
+        $param = new GetTagGroupDetailParam(
+            groupId: $groupId,
+            includeTags: false
+        );
+        $result = $this->procedure->execute($param);
 
-        $this->assertIsArray($result);
-        $this->assertEquals($tagGroup->getId(), $result['id']);
-        $this->assertEquals('推荐标签', $result['name']);
-        $this->assertArrayHasKey('createTime', $result);
-        $this->assertArrayHasKey('updateTime', $result);
-        $this->assertArrayHasKey('createdBy', $result);
-        $this->assertArrayHasKey('updatedBy', $result);
-        $this->assertArrayHasKey('tagCount', $result);
-        $this->assertEquals(2, $result['tagCount']);
-        $this->assertArrayNotHasKey('tags', $result, '不包含tags时不应该有tags字段');
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $resultArray = $result->toArray();
+        $this->assertEquals($tagGroup->getId(), $resultArray['id']);
+        $this->assertEquals('推荐标签', $resultArray['name']);
+        $this->assertArrayHasKey('createTime', $resultArray);
+        $this->assertArrayHasKey('updateTime', $resultArray);
+        $this->assertArrayHasKey('createdBy', $resultArray);
+        $this->assertArrayHasKey('updatedBy', $resultArray);
+        $this->assertArrayHasKey('tagCount', $resultArray);
+        $this->assertEquals(2, $resultArray['tagCount']);
+        $this->assertArrayNotHasKey('tags', $resultArray, '不包含tags时不应该有tags字段');
     }
 
     public function testExecuteWithIncludeTags(): void
@@ -64,21 +69,24 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
 
         $groupId = $tagGroup->getId();
         self::assertNotNull($groupId);
-        $this->procedure->groupId = $groupId;
-        $this->procedure->includeTags = true;
 
-        $result = $this->procedure->execute();
+        $param = new GetTagGroupDetailParam(
+            groupId: $groupId,
+            includeTags: true
+        );
+        $result = $this->procedure->execute($param);
 
-        $this->assertIsArray($result);
-        $this->assertEquals($tagGroup->getId(), $result['id']);
-        $this->assertEquals('技术标签', $result['name']);
-        $this->assertEquals(3, $result['tagCount']);
-        $this->assertArrayHasKey('tags', $result);
-        $this->assertIsArray($result['tags']);
-        $this->assertCount(3, $result['tags']);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $resultArray = $result->toArray();
+        $this->assertEquals($tagGroup->getId(), $resultArray['id']);
+        $this->assertEquals('技术标签', $resultArray['name']);
+        $this->assertEquals(3, $resultArray['tagCount']);
+        $this->assertArrayHasKey('tags', $resultArray);
+        $this->assertIsArray($resultArray['tags']);
+        $this->assertCount(3, $resultArray['tags']);
 
         // 检查标签数据结构
-        foreach ($result['tags'] as $tag) {
+        foreach ($resultArray['tags'] as $tag) {
             $this->assertArrayHasKey('id', $tag);
             $this->assertArrayHasKey('name', $tag);
             $this->assertArrayHasKey('valid', $tag);
@@ -87,7 +95,7 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
         }
 
         // 验证包含所有创建的标签
-        $tagNames = array_column($result['tags'], 'name');
+        $tagNames = array_column($resultArray['tags'], 'name');
         $this->assertContains('PHP-技术标签', $tagNames);
         $this->assertContains('JavaScript-技术标签', $tagNames);
         $this->assertContains('Python-技术标签', $tagNames);
@@ -100,18 +108,21 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
 
         $groupId = $tagGroup->getId();
         self::assertNotNull($groupId);
-        $this->procedure->groupId = $groupId;
-        $this->procedure->includeTags = true;
 
-        $result = $this->procedure->execute();
+        $param = new GetTagGroupDetailParam(
+            groupId: $groupId,
+            includeTags: true
+        );
+        $result = $this->procedure->execute($param);
 
-        $this->assertIsArray($result);
-        $this->assertEquals($tagGroup->getId(), $result['id']);
-        $this->assertEquals('空标签组', $result['name']);
-        $this->assertEquals(0, $result['tagCount']);
-        $this->assertArrayHasKey('tags', $result);
-        $this->assertIsArray($result['tags']);
-        $this->assertEmpty($result['tags']);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $resultArray = $result->toArray();
+        $this->assertEquals($tagGroup->getId(), $resultArray['id']);
+        $this->assertEquals('空标签组', $resultArray['name']);
+        $this->assertEquals(0, $resultArray['tagCount']);
+        $this->assertArrayHasKey('tags', $resultArray);
+        $this->assertIsArray($resultArray['tags']);
+        $this->assertEmpty($resultArray['tags']);
     }
 
     public function testExecuteWithMixedValidTags(): void
@@ -125,30 +136,36 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
 
         $groupId = $tagGroup->getId();
         self::assertNotNull($groupId);
-        $this->procedure->groupId = $groupId;
-        $this->procedure->includeTags = true;
 
-        $result = $this->procedure->execute();
+        $param = new GetTagGroupDetailParam(
+            groupId: $groupId,
+            includeTags: true
+        );
+        $result = $this->procedure->execute($param);
 
-        $this->assertIsArray($result);
-        $this->assertEquals(2, $result['tagCount']); // 应该包含所有标签，不管有效性
-        $this->assertArrayHasKey('tags', $result);
-        $this->assertCount(2, $result['tags']);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $resultArray = $result->toArray();
+        $this->assertEquals(2, $resultArray['tagCount']); // 应该包含所有标签，不管有效性
+        $this->assertArrayHasKey('tags', $resultArray);
+        $this->assertCount(2, $resultArray['tags']);
 
         // 验证包含有效和无效的标签
-        $validStatuses = array_column($result['tags'], 'valid');
+        $validStatuses = array_column($resultArray['tags'], 'valid');
         $this->assertContains(true, $validStatuses);
         $this->assertContains(false, $validStatuses);
     }
 
     public function testExecuteWithNonExistentGroup(): void
     {
-        $this->procedure->groupId = 'non-existent-group-id';
+        $param = new GetTagGroupDetailParam(
+            groupId: 'non-existent-group-id',
+            includeTags: false
+        );
 
         $this->expectException(ApiException::class);
         $this->expectExceptionMessage('标签组不存在');
 
-        $this->procedure->execute();
+        $this->procedure->execute($param);
     }
 
     public function testExecuteCheckDataTypes(): void
@@ -159,21 +176,25 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
 
         $groupId = $tagGroup->getId();
         self::assertNotNull($groupId);
-        $this->procedure->groupId = $groupId;
-        $this->procedure->includeTags = true;
 
-        $result = $this->procedure->execute();
+        $param = new GetTagGroupDetailParam(
+            groupId: $groupId,
+            includeTags: true
+        );
+        $result = $this->procedure->execute($param);
 
-        $this->assertIsString($result['id']);
-        $this->assertIsString($result['name']);
-        $this->assertIsString($result['createTime']);
-        $this->assertIsString($result['updateTime']);
-        $this->assertIsInt($result['tagCount']);
-        $this->assertIsArray($result['tags']);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $resultArray = $result->toArray();
+        $this->assertIsString($resultArray['id']);
+        $this->assertIsString($resultArray['name']);
+        $this->assertIsString($resultArray['createTime']);
+        $this->assertIsString($resultArray['updateTime']);
+        $this->assertIsInt($resultArray['tagCount']);
+        $this->assertIsArray($resultArray['tags']);
 
         // 检查标签数据类型
-        if (($result['tags'] ?? []) !== []) {
-            $tag = $result['tags'][0];
+        if (($resultArray['tags'] ?? []) !== []) {
+            $tag = $resultArray['tags'][0];
             $this->assertIsInt($tag['id']); // Tag ID 是整数类型
             $this->assertIsString($tag['name']);
             $this->assertIsBool($tag['valid']);
@@ -193,18 +214,21 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
 
         $groupId = $tagGroup->getId();
         self::assertNotNull($groupId);
-        $this->procedure->groupId = $groupId;
-        $this->procedure->includeTags = true;
 
-        $result = $this->procedure->execute();
+        $param = new GetTagGroupDetailParam(
+            groupId: $groupId,
+            includeTags: true
+        );
+        $result = $this->procedure->execute($param);
 
-        $this->assertIsArray($result);
-        $this->assertEquals(20, $result['tagCount']);
-        $this->assertArrayHasKey('tags', $result);
-        $this->assertCount(20, $result['tags']);
+        $this->assertInstanceOf(ArrayResult::class, $result);
+        $resultArray = $result->toArray();
+        $this->assertEquals(20, $resultArray['tagCount']);
+        $this->assertArrayHasKey('tags', $resultArray);
+        $this->assertCount(20, $resultArray['tags']);
 
         // 验证所有标签都被返回
-        $tagNames = array_column($result['tags'], 'name');
+        $tagNames = array_column($resultArray['tags'], 'name');
         for ($i = 1; $i <= 20; ++$i) {
             $this->assertContains("标签{$i}-大量标签", $tagNames);
         }
@@ -229,7 +253,8 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
 
     public function testGetCacheDuration(): void
     {
-        $request = $this->createMock(JsonRpcRequest::class);
+        $request = new JsonRpcRequest();
+        $request->setMethod('tagGroup.detail');
 
         $duration = $this->procedure->getCacheDuration($request);
 
@@ -238,39 +263,20 @@ final class GetTagGroupDetailTest extends AbstractProcedureTestCase
 
     public function testGetCacheTags(): void
     {
-        $request = $this->createMock(JsonRpcRequest::class);
-        $this->procedure->groupId = '123';
+        $params = new JsonRpcParams([
+            'groupId' => '123',
+            'includeTags' => false,
+        ]);
+        $request = new JsonRpcRequest();
+        $request->setId('1');
+        $request->setMethod('tagGroup.detail');
+        $request->setParams($params);
 
         $tags = iterator_to_array($this->procedure->getCacheTags($request));
 
         $this->assertContains('tag_group', $tags);
         $this->assertContains('tag_group_detail', $tags);
         $this->assertContains('tag_group_123', $tags);
-    }
-
-    public function testGetMockResult(): void
-    {
-        $mockResult = GetTagGroupDetail::getMockResult();
-
-        $this->assertIsArray($mockResult);
-        $this->assertArrayHasKey('id', $mockResult);
-        $this->assertArrayHasKey('name', $mockResult);
-        $this->assertArrayHasKey('createTime', $mockResult);
-        $this->assertArrayHasKey('updateTime', $mockResult);
-        $this->assertArrayHasKey('createdBy', $mockResult);
-        $this->assertArrayHasKey('updatedBy', $mockResult);
-        $this->assertArrayHasKey('tagCount', $mockResult);
-        $this->assertArrayHasKey('tags', $mockResult);
-        $this->assertIsArray($mockResult['tags']);
-
-        // 检查标签项结构
-        if (($mockResult['tags'] ?? []) !== []) {
-            $tag = $mockResult['tags'][0];
-            $this->assertArrayHasKey('id', $tag);
-            $this->assertArrayHasKey('name', $tag);
-            $this->assertArrayHasKey('valid', $tag);
-            $this->assertArrayHasKey('createTime', $tag);
-        }
     }
 
     /**

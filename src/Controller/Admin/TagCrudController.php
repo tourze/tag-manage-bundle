@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tourze\TagManageBundle\Controller\Admin;
 
-use CmsBundle\Controller\Admin\EntityCrudController;
 use EasyCorp\Bundle\EasyAdminBundle\Attribute\AdminCrud;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;

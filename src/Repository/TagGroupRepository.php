@@ -13,7 +13,7 @@ use Tourze\TagManageBundle\Entity\TagGroup;
  * @extends ServiceEntityRepository<TagGroup>
  */
 #[AsRepository(entityClass: TagGroup::class)]
-class TagGroupRepository extends ServiceEntityRepository
+final class TagGroupRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {

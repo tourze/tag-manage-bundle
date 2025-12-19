@@ -5,17 +5,18 @@ declare(strict_types=1);
 namespace Tourze\TagManageBundle\Procedure;
 
 use Doctrine\ORM\QueryBuilder;
-use Symfony\Component\Validator\Constraints as Assert;
 use Tourze\JsonRPC\Core\Attribute\MethodDoc;
 use Tourze\JsonRPC\Core\Attribute\MethodExpose;
-use Tourze\JsonRPC\Core\Attribute\MethodParam;
 use Tourze\JsonRPC\Core\Attribute\MethodTag;
+use Tourze\JsonRPC\Core\Contracts\RpcParamInterface;
+use Tourze\JsonRPC\Core\Result\ArrayResult;
 use Tourze\JsonRPC\Core\Exception\ApiException;
 use Tourze\JsonRPC\Core\Model\JsonRpcParams;
 use Tourze\JsonRPC\Core\Model\JsonRpcRequest;
 use Tourze\JsonRPCCacheBundle\Procedure\CacheableProcedure;
 use Tourze\JsonRPCPaginatorBundle\Procedure\PaginatorTrait;
 use Tourze\TagManageBundle\Entity\Tag;
+use Tourze\TagManageBundle\Param\GetTagListParam;
 use Tourze\TagManageBundle\Repository\TagGroupRepository;
 use Tourze\TagManageBundle\Repository\TagRepository;
 
@@ -26,91 +27,74 @@ final class GetTagList extends CacheableProcedure
 {
     use PaginatorTrait;
 
-    #[MethodParam(description: '标签组ID')]
-    public ?string $groupId = null;
-
-    #[MethodParam(description: '搜索关键词')]
-    public ?string $keyword = null;
-
-    #[MethodParam(description: '是否只获取有效的标签')]
-    public bool $validOnly = true;
-
-    #[MethodParam(description: '排序字段')]
-    #[Assert\Choice(choices: ['name', 'createTime', 'updateTime', 'usage'])]
-    public string $orderBy = 'createTime';
-
-    #[MethodParam(description: '排序方向')]
-    #[Assert\Choice(choices: ['ASC', 'DESC'])]
-    public string $orderDir = 'DESC';
-
-    #[MethodParam(description: '是否包含使用统计')]
-    public bool $includeUsageStats = false;
-
     public function __construct(
         private readonly TagRepository $tagRepository,
         private readonly TagGroupRepository $tagGroupRepository,
     ) {
     }
 
-    public function execute(): array
+    /**
+     * @phpstan-param GetTagListParam $param
+     */
+    public function execute(GetTagListParam|RpcParamInterface $param): ArrayResult
     {
-        $this->validateTagGroup();
-        $qb = $this->buildQuery();
+        $this->validateTagGroup($param);
+        $qb = $this->buildQuery($param);
 
-        return $this->fetchList($qb, fn ($tag) => $this->formatTagData($tag));
+        return new ArrayResult($this->fetchList($qb, fn ($tag) => $this->formatTagData($tag, $param), null, $param));
     }
 
-    private function validateTagGroup(): void
+    private function validateTagGroup(GetTagListParam $param): void
     {
-        if (null === $this->groupId || '' === $this->groupId) {
+        if (null === $param->groupId || '' === $param->groupId) {
             return;
         }
 
-        $tagGroup = $this->tagGroupRepository->find($this->groupId);
+        $tagGroup = $this->tagGroupRepository->find($param->groupId);
         if (null === $tagGroup) {
             throw new ApiException('标签组不存在');
         }
     }
 
-    private function buildQuery(): QueryBuilder
+    private function buildQuery(GetTagListParam $param): QueryBuilder
     {
         $qb = $this->tagRepository->createQueryBuilder('t')
             ->leftJoin('t.groups', 'g')
         ;
 
-        $this->applySorting($qb);
-        $this->applyFilters($qb);
+        $this->applySorting($qb, $param);
+        $this->applyFilters($qb, $param);
 
         return $qb;
     }
 
-    private function applySorting(QueryBuilder $qb): void
+    private function applySorting(QueryBuilder $qb, GetTagListParam $param): void
     {
-        if ('usage' === $this->orderBy) {
+        if ('usage' === $param->orderBy) {
             // 假设有使用统计字段，实际需要根据业务需求调整
-            $qb->orderBy('t.id', $this->orderDir); // 临时用ID排序，实际应该是使用统计
+            $qb->orderBy('t.id', $param->orderDir); // 临时用ID排序，实际应该是使用统计
         } else {
-            $qb->orderBy('t.' . $this->orderBy, $this->orderDir);
+            $qb->orderBy('t.' . $param->orderBy, $param->orderDir);
         }
     }
 
-    private function applyFilters(QueryBuilder $qb): void
+    private function applyFilters(QueryBuilder $qb, GetTagListParam $param): void
     {
-        if (null !== $this->groupId && '' !== $this->groupId) {
+        if (null !== $param->groupId && '' !== $param->groupId) {
             $qb->andWhere('t.groups = :groupId')
-                ->setParameter('groupId', $this->groupId)
+                ->setParameter('groupId', $param->groupId)
             ;
         }
 
-        if ($this->validOnly) {
+        if ($param->validOnly) {
             $qb->andWhere('t.valid = :valid')
                 ->setParameter('valid', true)
             ;
         }
 
-        if (null !== $this->keyword && '' !== $this->keyword) {
+        if (null !== $param->keyword && '' !== $param->keyword) {
             $qb->andWhere('t.name LIKE :keyword')
-                ->setParameter('keyword', '%' . $this->keyword . '%')
+                ->setParameter('keyword', '%' . $param->keyword . '%')
             ;
         }
     }
@@ -118,7 +102,7 @@ final class GetTagList extends CacheableProcedure
     /**
      * @return array<string, mixed>
      */
-    private function formatTagData(Tag $tag): array
+    private function formatTagData(Tag $tag, GetTagListParam $param): array
     {
         $data = [
             'id' => $tag->getId(),
@@ -133,7 +117,7 @@ final class GetTagList extends CacheableProcedure
         ];
 
         // 包含使用统计（需要根据实际业务调整）
-        if ($this->includeUsageStats) {
+        if ($param->includeUsageStats) {
             $data['usageCount'] = 0; // 实际应该查询关联实体的数量
             $data['lastUsedTime'] = null;
         }
@@ -159,8 +143,10 @@ final class GetTagList extends CacheableProcedure
     public function getCacheTags(JsonRpcRequest $request): iterable
     {
         $tags = ['tag', 'tag_list'];
-        if (null !== $this->groupId && '' !== $this->groupId) {
-            $tags[] = 'tag_group_' . $this->groupId;
+        $params = $request->getParams();
+        $groupId = $params?->get('groupId');
+        if (null !== $groupId && '' !== $groupId) {
+            $tags[] = 'tag_group_' . $groupId;
         }
 
         return $tags;
@@ -169,43 +155,4 @@ final class GetTagList extends CacheableProcedure
     /**
      * @return array<string, mixed>
      */
-    public static function getMockResult(): array
-    {
-        return [
-            'list' => [
-                [
-                    'id' => 1,
-                    'name' => '热门',
-                    'valid' => true,
-                    'group' => [
-                        'id' => '1',
-                        'name' => '推荐标签',
-                    ],
-                    'usageCount' => 156,
-                    'lastUsedTime' => '2024-01-15 10:30:00',
-                    'createTime' => '2024-01-01 12:00:00',
-                    'updateTime' => '2024-01-01 12:00:00',
-                ],
-                [
-                    'id' => 2,
-                    'name' => '科技',
-                    'valid' => true,
-                    'group' => [
-                        'id' => '2',
-                        'name' => '分类标签',
-                    ],
-                    'usageCount' => 89,
-                    'lastUsedTime' => '2024-01-14 15:20:00',
-                    'createTime' => '2024-01-01 12:00:00',
-                    'updateTime' => '2024-01-01 12:00:00',
-                ],
-            ],
-            'pagination' => [
-                'current' => 1,
-                'pageSize' => 20,
-                'total' => 2,
-                'hasMore' => false,
-            ],
-        ];
-    }
 }
